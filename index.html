@@ -598,6 +598,11 @@ function abrirLB(src) {
   document.getElementById("lb-img").src = src;
   document.getElementById("lb").classList.remove("hidden");
 }
+function abrirLBSrc(el) {
+  var img = el;
+  document.getElementById("lb-img").src = img.src;
+  document.getElementById("lb").classList.remove("hidden");
+}
 
 function setTurno(t) {
   turno = t;
@@ -815,11 +820,25 @@ function enviarRonda() {
     criadoEm:new Date().toISOString()
   };
 
+  // Salvar no localStorage SEM fotos (fotos ficam só no arquivo baixado)
   var chave = "petcamp_ronda_" + data.replace(/\//g,"_");
   var pasta = [];
   try { pasta = JSON.parse(localStorage.getItem(chave)||"[]"); } catch(e){}
-  pasta.push(reg);
-  localStorage.setItem(chave, JSON.stringify(pasta));
+  var regSemFotos = JSON.parse(JSON.stringify(reg));
+  for (var _i=0; _i<regSemFotos.itens.length; _i++) {
+    var qtdFotos = regSemFotos.itens[_i].fotos ? regSemFotos.itens[_i].fotos.length : 0;
+    regSemFotos.itens[_i].fotos = [];
+    regSemFotos.itens[_i].qtdFotos = qtdFotos;
+  }
+  pasta.push(regSemFotos);
+  try {
+    localStorage.setItem(chave, JSON.stringify(pasta));
+  } catch(e) {
+    // localStorage cheio — salva só os metadados básicos
+    var regMini = {id:reg.id, loja:reg.loja, gestor:reg.gestor, data:reg.data, horario:reg.horario, turno:reg.turno, modalidade:reg.modalidade, lojaEstado:reg.lojaEstado, itens:[], obsgeral:reg.obsgeral, criadoEm:reg.criadoEm};
+    pasta.push(regMini);
+    try { localStorage.setItem(chave, JSON.stringify(pasta)); } catch(e2) {}
+  }
   var datas = [];
   try { datas = JSON.parse(localStorage.getItem("petcamp_datas")||"[]"); } catch(e){}
   if (datas.indexOf(data)<0) { datas.unshift(data); localStorage.setItem("petcamp_datas",JSON.stringify(datas)); }
@@ -951,10 +970,12 @@ function renderPainel() {
       var cor   = st==="ok"?"#15803D":st==="nok"?"#B91C1C":st==="na"?"#6B7280":"#92400E";
       var obsH  = it.obs ? ("<div class='r-obs'>"+it.obs+"</div>") : "";
       var ftH   = "";
-      if(it.fotos && it.fotos.length){
+      if(it.qtdFotos && it.qtdFotos > 0){
+        ftH = "<div class='r-fotos' style='font-size:12px;color:#4338CA;padding:3px 0'>📷 " + it.qtdFotos + " foto(s) no arquivo baixado</div>";
+      } else if(it.fotos && it.fotos.length){
         ftH = "<div class='r-fotos'>";
         for(var j=0;j<it.fotos.length;j++){
-          ftH += "<img src='"+it.fotos[j]+"' class='r-foto-thumb' onclick=\"abrirLB('\" + it.fotos[j] + \"')\" alt='foto'>";
+          var fsrc = it.fotos[j]; ftH += '<img src="' + fsrc + '" class="r-foto-thumb" alt="foto" onclick="abrirLBSrc(this)">';
         }
         ftH += "</div>";
       }
